@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Paiement</title>
+<style>
+  :root{
+    --bg:#0f1724;
+    --card:#0b1220;
+    --accent:#22c55e;
+    --muted:#9aa4b2;
+    --glass: rgba(255,255,255,0.04);
+    --radius:18px;
+  }
+  html,body{
+    height:100%;
+    margin:0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background: linear-gradient(180deg,#071028 0%, #081428 60%);
+    color:#e6eef8;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:780px;
+    margin:28px auto;
+    padding:20px;
+  }
+
+  header{ display:flex; align-items:center; gap:14px; margin-bottom:18px; }
+  .logo{
+    width:64px; height:64px;
+    border-radius:14px;
+    background:linear-gradient(135deg,#0ea5a4,#22c55e);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:22px; color:#022;
+    box-shadow: 0 8px 30px rgba(4,10,20,0.6);
+  }
+  h1{ margin:0; font-size:20px; }
+
+  .card{
+    background:var(--card);
+    border-radius:var(--radius);
+    padding:20px;
+    box-shadow: 0 8px 30px rgba(2,6,12,0.6);
+  }
+
+  label{ display:block; font-size:13px; margin-bottom:8px; color:var(--muted); }
+
+  .input-row{ display:flex; gap:12px; align-items:center; }
+  input[type="number"]{
+    background: var(--glass);
+    border:1px solid rgba(255,255,255,0.04);
+    color: #e7f0fb;
+    padding:16px;
+    border-radius:12px;
+    font-size:22px;
+    width:100%;
+    text-align:right;
+  }
+
+  select{
+    background: var(--glass);
+    border:1px solid rgba(255,255,255,0.06);
+    color:#e7f0fb;
+    padding:16px;
+    border-radius:12px;
+    font-size:18px;
+  }
+
+  button{
+    flex:1;
+    padding:14px;
+    font-size:18px;
+    border-radius:14px;
+    border:0;
+    cursor:pointer;
+  }
+
+  .actions{ margin-top:18px; display:flex; gap:12px; }
+  .btn-validate{ background:#1e293b; color:white; }
+  .btn-pay{
+    background: linear-gradient(90deg,#10b981,#059669);
+    color:#032214; font-weight:700;
+    box-shadow:0 10px 30px rgba(16,185,129,0.18);
+  }
+
+  .summary{
+    margin-top:18px;
+    padding:14px;
+    background:rgba(255,255,255,0.03);
+    border-radius:12px;
+    display:flex;
+    justify-content:space-between;
+  }
+  .big-amount{ font-size:26px; font-weight:700; }
+
+  .status{
+    margin-top:18px;
+    text-align:center;
+    min-height:72px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:12px;
+  }
+
+  .spinner{
+    width:64px; height:64px;
+    border-radius:50%;
+    border:6px solid rgba(255,255,255,0.06);
+    border-top-color: rgba(255,255,255,0.22);
+    animation:spin 1s linear infinite;
+  }
+  @keyframes spin { to{ transform:rotate(360deg); } }
+
+  .success{ color:var(--accent); display:flex; flex-direction:column; gap:8px; }
+  .check{
+    width:64px; height:64px; background:rgba(34,197,94,0.15);
+    border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:30px; color:var(--accent);
+  }
+</style>
+</head>
+
+<body>
+<div class="wrap">
+
+<header>
+  <div class="logo">Pay</div>
+  <div><h1>Paiement sécurisé</h1></div>
+</header>
+
+<div class="card">
+
+  <label>Montant</label>
+  <div class="input-row">
+    <input id="amount" type="number" step="0.01" min="0" placeholder="0.00">
+    <select id="currency">
+      <option value="€">€ EUR</option>
+      <option value="$">$ USD</option>
+      <option value="£">£ GBP</option>
+      <option value="¥">¥ JPY</option>
+    </select>
+  </div>
+
+  <div class="actions">
+    <button id="validateBtn" class="btn-validate">Valider</button>
+    <button id="payBtn" class="btn-pay" disabled>Payer</button>
+  </div>
+
+  <div id="summary" class="summary" hidden>
+    <div>Montant sélectionné</div>
+    <div class="big-amount" id="displayAmount">0.00</div>
+  </div>
+
+  <div id="status" class="status"></div>
+
+</div>
+
+</div>
+
+<script>
+const amountInput = document.getElementById("amount");
+const currencySelect = document.getElementById("currency");
+const validateBtn = document.getElementById("validateBtn");
+const payBtn = document.getElementById("payBtn");
+const summary = document.getElementById("summary");
+const displayAmount = document.getElementById("displayAmount");
+const status = document.getElementById("status");
+
+function formatMoney(v, curr){
+  return curr + " " + Number(v).toFixed(2);
+}
+
+validateBtn.onclick = () => {
+  const val = parseFloat(amountInput.value);
+  if(isNaN(val) || val <= 0){ alert("Montant invalide."); return; }
+  const curr = currencySelect.value;
+  displayAmount.textContent = formatMoney(val, curr);
+  summary.hidden = false;
+  payBtn.disabled = false;
+  payBtn.textContent = "Payer " + formatMoney(val, curr);
+};
+
+let audioCtx = null;
+function sound(){
+  const ctx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+  audioCtx = ctx;
+  const now = ctx.currentTime;
+  const gain = ctx.createGain();
+  gain.gain.value = 0.9;
+  gain.connect(ctx.destination);
+
+  function note(freq, t, dur){
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.frequency.value = freq;
+    osc.type="sine";
+    osc.connect(g);
+    g.connect(gain);
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(1, t+0.01);
+    g.gain.exponentialRampToValueAtTime(0.001, t+dur);
+    osc.start(t);
+    osc.stop(t+dur);
+  }
+
+  note(650, now, 0.08);
+  note(830, now+0.10, 0.08);
+  note(980, now+0.18, 0.12);
+}
+
+function vibrate(){
+  if(navigator.vibrate) navigator.vibrate([20,10,20]);
+}
+
+payBtn.onclick = async () => {
+  payBtn.disabled = true;
+  validateBtn.disabled = true;
+  amountInput.disabled = true;
+  currencySelect.disabled = true;
+
+  status.innerHTML = '<div class="spinner"></div><div>Traitement…</div>';
+
+  try{
+    if(audioCtx && audioCtx.state === "suspended") await audioCtx.resume();
+  }catch{}
+
+  setTimeout(()=>{
+    sound();
+    vibrate();
+
+    setTimeout(()=>{
+      status.innerHTML = `
+        <div class="success">
+          <div class="check">✓</div>
+          <div>Paiement accepté</div>
+        </div>
+      `;
+    },400);
+
+  },1000);
+};
+</script>
+
+</body>
+</html>
